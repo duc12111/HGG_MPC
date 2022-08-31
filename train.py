@@ -33,7 +33,12 @@ def train():
     args.logger.summary_setup()
     goal_list = None
 
-    for epoch in range(args.epochs):
+    # use to continue tranining name convention
+    start_epoch = 0
+    if args.model_path and args.model_epoch and args.model_epoch.isnumeric():
+        start_epoch = int(args.model_epoch) + 1
+
+    for epoch in range(start_epoch, start_epoch+args.epochs):
         for cycle in range(args.cycles):
             args.logger.tabular_clear()
             args.logger.summary_clear()
@@ -46,7 +51,7 @@ def train():
 
             tester.cycle_summary()
 
-            args.logger.add_record('Epoch', str(epoch) + '/' + str(args.epochs))
+            args.logger.add_record('Epoch', str(epoch) + '/' + str(start_epoch+args.epochs))
             args.logger.add_record('Cycle', str(cycle) + '/' + str(args.cycles))
             args.logger.add_record('Episodes', buffer.counter)
             args.logger.add_record('Timesteps', buffer.steps_counter)
