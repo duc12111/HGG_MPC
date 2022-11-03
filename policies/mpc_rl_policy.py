@@ -16,6 +16,7 @@ class MPCRLPolicy(Policy):
         # get current policy from path (restore tf session + graph)
         self.mpc_policy = MPCPolicy(args)
         self.rl_policy = RLPolicy(args)
+        self.ratio = args.mpc_ratio
 
     def reset(self):
         self.rl_policy.reset()
@@ -45,7 +46,7 @@ class MPCRLPolicy(Policy):
         # compute actions from obs based on current policy by running tf session initialized before
         rl_actions, rl_infos = self.rl_policy.predict(obs)
 
-        sub_goals = [env.subgoal(rl_action) for (env, rl_action) in zip(self.envs, rl_actions)]
+        sub_goals = [env.subgoal(rl_action*env.get_action_limit()*self.ratio) for (env, rl_action) in zip(self.envs, rl_actions)]
         self.mpc_policy.set_sub_goals(sub_goals)
 
         actions, infos = self.mpc_policy.predict(obs)
@@ -53,5 +54,4 @@ class MPCRLPolicy(Policy):
         # gripper action
         for i in range(len(actions)):
             actions[i][3] = rl_actions[i][3]
-
         return actions, infos

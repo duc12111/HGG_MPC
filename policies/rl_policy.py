@@ -15,8 +15,8 @@ class RLPolicy(Policy):
 
     def __init__(self, args):
         # get current policy from path (restore tf session + graph)
-        self.play_dir = args.play_path
-        self.play_epoch = args.play_epoch
+        self.play_dir = args.model_path
+        self.play_epoch = args.model_epoch
         self.meta_path = os.path.join(self.play_dir, "saved_policy-{}.meta".format(self.play_epoch))
         self.checkpoint_path = os.path.join(self.play_dir, "saved_policy-{}".format(self.play_epoch))
         self.sess = tf.compat.v1.Session()

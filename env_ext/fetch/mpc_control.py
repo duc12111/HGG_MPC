@@ -17,7 +17,10 @@ class MPCControlGoalEnv(VanillaGoalEnv):
         return obs
 
     def disable_action_limit(self):
-        self.env.env.limit_action = 1.0
+        self.env.env.enable_limit_action = False
+
+    def get_action_limit(self):
+        return self.env.env.limit_action
 
     @property
     def time(self):
@@ -38,13 +41,12 @@ class MPCControlGoalEnv(VanillaGoalEnv):
         new_info['ExReward'] = self.total_reward
         return new_info
 
-
     def _extend_reward(self, reward, obs):
         new_reward = reward
         if obs['collision_check']:
-            new_reward = -4.0
+            new_reward = -200.
         if obs['object_dis'] > self.obj_distance_threshold:
-            new_reward = -10.0  # object is no more in the grip
+            new_reward = 0.0  # object is no more in the grip
 
         self.total_reward += new_reward
 
@@ -59,7 +61,7 @@ class MPCControlGoalEnv(VanillaGoalEnv):
 
             for obstacle_id in self.sim_env.geom_ids_obstacles:
                 if (contact.geom1 == obstacle_id) or (contact.geom2 == obstacle_id):
-                    #if contact.geom1 != 16 and contact.geom2 != 16:
+                    # if contact.geom1 != 16 and contact.geom2 != 16:
                     exists_collision = True
                     break
         obs['collision_check'] = exists_collision
@@ -68,8 +70,8 @@ class MPCControlGoalEnv(VanillaGoalEnv):
 
         # calculate the velocities of the objects
         real_obstacle_info = obs['real_obstacle_info']
-        real_obstacle_info_pos = real_obstacle_info[:,0:3]
-        prev_real_obstacle_info_pos = prev_obs['real_obstacle_info'][:,0:3]
+        real_obstacle_info_pos = real_obstacle_info[:, 0:3]
+        prev_real_obstacle_info_pos = prev_obs['real_obstacle_info'][:, 0:3]
         dt = self.dt
         obj_vels = (real_obstacle_info_pos - prev_real_obstacle_info_pos) / dt
 
@@ -99,7 +101,7 @@ class MPCControlGoalEnv(VanillaGoalEnv):
         action = np.clip(rl_action, self.action_space.low, self.action_space.high)
         pos_ctrl, gripper_ctrl = action[:3], action[3]
 
-        pos_ctrl *= 0.05  # limit maximum change in position
+        # pos_ctrl *= 0.05  # limit maximum change in position
         grip_pos = self.sim.data.get_site_xpos('robot0:grip')
 
         sub_goal = grip_pos + pos_ctrl

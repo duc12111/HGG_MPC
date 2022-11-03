@@ -8,13 +8,16 @@ Robotics_envs_id = [
     'FetchPickDynObstaclesEnv-v1',
     'FetchPickDynObstaclesEnv-v2',
     'FetchPickDynLiftedObstaclesEnv-v1',
-    'FetchPickDynObstaclesMaxEnv-v1'
+    'FetchPickDynObstaclesMaxEnv-v1',
+    'TestEnv-v1',
+    'FetchPickDynObstaclesRstopEnv-v1',
+    'FetchPickDynObstaclesSinEnv-v1',
 ]
 
 
 def make_env(args):
     assert args.env in Robotics_envs_id
-    if args.env[:5] == 'Fetch':
+    if args.env[:5] == 'Fetch' or args.env[:7] == 'TestEnv':
         return fetch_env.make_env(args)
     else:
         return None
@@ -30,4 +33,8 @@ def clip_return_range(args):
         'FetchPickDynObstaclesEnv-v2': (gamma_sum_min, gamma_sum_max),
         'FetchPickDynLiftedObstaclesEnv-v1': (gamma_sum_min, gamma_sum_max),
         'FetchPickDynObstaclesMaxEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'TestEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'FetchPickDynObstaclesRstopEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'FetchPickDynObstaclesSinEnv-v1': (gamma_sum_min, gamma_sum_max),
+
     }[args.env]

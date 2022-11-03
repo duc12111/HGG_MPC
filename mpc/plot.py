@@ -35,6 +35,8 @@ class MPCDebugPlot:
         'FetchPickDynSqrObstacle-v1': [[0.05, 0.05], [0.05, 0.05, 0.0], [0.05, 0.05]],
         'FetchPickDynObstaclesEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
         'FetchPickDynObstaclesEnv-v2': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
+        'FetchPickDynObstaclesRstopEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
+        'FetchPickDynObstaclesSinEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
         'FetchPickDynLiftedObstaclesEnv-v1': [[0.05, 0.055 + 0.02, 0.055], [0.05, 0.05 + 0.02, 0.05], [0.05, 0.02, 0.02]],
         'FetchPickDynObstaclesMaxEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
     }
@@ -43,6 +45,8 @@ class MPCDebugPlot:
         'FetchPickDynSqrObstacle-v1': ['#416ab6', '#416ab6'],
         'FetchPickDynObstaclesEnv-v1': ['#416ab6', '#5aa9a2'],
         'FetchPickDynObstaclesEnv-v2': ['#416ab6', '#416ab6'],
+        'FetchPickDynObstaclesRstopEnv-v1': ['#416ab6', '#5aa9a2'],
+        'FetchPickDynObstaclesSinEnv-v1': ['#416ab6', '#5aa9a2'],
         'FetchPickDynLiftedObstaclesEnv-v1': ['#416ab6', '#416ab6', '#5aa9a2'],
         'FetchPickDynObstaclesMaxEnv-v1': ['#416ab6', '#5aa9a2'],
     }

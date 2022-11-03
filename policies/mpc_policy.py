@@ -71,7 +71,6 @@ class MPCPolicy(Policy):
             a, info = self._predict(ob, i)
             actions.append(a)
             infos.append(info)
-
         return actions, infos
 
     # predict next action to the goal
@@ -137,30 +136,33 @@ class MPCPolicy(Policy):
             self.last_error[i] = False
 
         xinit_pos = xinit[0:3]
-        target_x = self._compute_target(next_x)
+        target_x = self._compute_target(next_x, env.get_action_limit())
 
         self.agent_vel_x = next_x[3]
         self.agent_vel_y = next_x[4]
         self.agent_vel_z = next_x[5]
         self.old_ob = ob
 
-        action_x = target_x - xinit_pos
+        action_x = (target_x - xinit_pos)
         next_action = np.array([action_x[0], action_x[1], action_x[2], self.grip_action])
 
         info = {'exitflag': exitflag, 'horizon': model.N,
                 'integrator_ts': self.integrator_ts,
                 'info': info, 'pred_u': pred_u,
-                'pred_x': pred_x, 'next_x': next_x, 'target_x': target_x,
+                'pred_x': pred_x, 'next_x': next_x, 'target_x': next_x[0:3],
                 'parameters': parameters}
 
         return next_action, info
 
-    def _compute_target(self, next_x) -> np.ndarray:
-        # deceleration to zero velocity displacement
+    def _compute_target(self, next_x, action_limit) -> np.ndarray:
+        # deceleration to zero velocity displacement only used for 30 > n_subtimestep >5
+        # https://stackoverflow.com/questions/71751538/mujoco-via-mujoco-py-interface-fetchreach-v1-scenario-robotic-action-delay
         next_x_vel = next_x[3:6]
-        disp_t = 0.07
         next_x_pos = next_x[0:3]
+        decelerate_disp_t = 5.6*action_limit + 0.94
+        disp_t = 0.07 / decelerate_disp_t
         disp_x_pos = next_x_pos + next_x_vel / 2 * disp_t
+
 
         target_x = disp_x_pos
 

@@ -43,7 +43,10 @@ class Tester:
 				infos.append(info)
 		for i in range(self.test_rollouts):
 			acc_sum += infos[i]['Success']
-			ex_rew_sum += infos[i]['ExReward']
+			if 'ExReward' not in infos[i]:
+				ex_rew_sum = ex_rew_sum*self.args.gamma + infos[i]['Rewards']
+			else:
+				ex_rew_sum = ex_rew_sum*self.args.gamma + infos[i]['ExReward']
 			col_sum += infos[i]['Collisions']
 
 		steps = self.args.buffer.counter

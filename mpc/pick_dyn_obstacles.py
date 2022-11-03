@@ -88,7 +88,7 @@ def inequality_constraints(z, p):
     )
 
 
-def generate_pathplanner(create=True, path=''):
+def generate_pathplanner(create=True, path='',n_substep=5):
     """
     Generates and returns a FORCESPRO solver that calculates a path based on
     constraints and dynamics while minimizing an objective function.
@@ -101,7 +101,7 @@ def generate_pathplanner(create=True, path=''):
     model.N = 8  # horizon length
     model.nvar = 10  # number of variables
     model.neq = 6  # number of equality constraints
-    model.nh = 3
+    model.nh = 3 # number of nonlinear inequality constraints
     model.npar = 6 + 6 * 2  # number of runtime parameters
 
     model.objective = objective
@@ -143,7 +143,7 @@ def generate_pathplanner(create=True, path=''):
     #                             approximation
     codeoptions.noVariableElimination = 1.
     codeoptions.overwrite = 1
-    codeoptions.nlp.integrator.Ts = 0.01
+    codeoptions.nlp.integrator.Ts = 0.01 * n_substep/5
     codeoptions.nlp.integrator.nodes = 5
     codeoptions.nlp.integrator.type = 'ERK4'
     # codeoptions.nlp.TolEq = 1E-2

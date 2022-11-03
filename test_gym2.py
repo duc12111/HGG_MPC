@@ -52,7 +52,7 @@ while i < 100:
     #for k in range(140):
         # env.render()
         # time.sleep(0.05)
-    for k in range(40):
+    for k in range(100):
         action = go_z #env.action_space.sample()
         #action = env.action_space.sample()
         ob, reward, _, info = env.step(action)

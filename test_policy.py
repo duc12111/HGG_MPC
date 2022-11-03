@@ -47,7 +47,8 @@ class Tester:
         acc_sum = 0.0
         col_sum = 0.0
         tol_acc_sum = 0.0
-        start_seed = 1000
+        col_episode = 0
+        start_seed = args.seed
 
         for i in range(self.test_rollouts):
             env.np_random.seed(start_seed + i)
@@ -67,7 +68,8 @@ class Tester:
                 ob, reward, _, env_info = env.step(action)
                 if env_info['Success']:
                     break
-
+            if env.collisions and args.test_show_collision:
+                print(i+start_seed)
             args.logger.add_record('Success', int(env_info['Success']))
             args.logger.add_record('TimeCost(sec)', env.time)
             args.logger.add_record('Collisions', env.collisions)
@@ -77,17 +79,20 @@ class Tester:
 
             acc_sum += env_info['Success']
             col_sum += env.collisions
+            if env.collisions > 0:
+                col_episode += 1
             if env.collisions <= test_col_tolerance:
                 tol_acc_sum += env_info['Success']
 
-            args.logger.save_csv(filename="test_policy_{}_tol{}_run{}"
-                                 .format(args.play_policy, test_col_tolerance, args.test_run_id))
+            args.logger.save_csv(filename="test_policy_{}_{}_tol{}_run{}"
+                                 .format(args.model_epoch, args.play_policy, test_col_tolerance, args.test_run_id))
 
         tol_acc = tol_acc_sum / self.test_rollouts
 
         print('Success rate: {}'.format(acc_sum / self.test_rollouts))
         print(bcolors.WARNING + 'Success rate (tol): {}'.format(tol_acc) + bcolors.ENDC)
         print('Collisions sum: ', col_sum)
+        print('Collisions episode: ', col_episode)
 
 
 if __name__ == "__main__":

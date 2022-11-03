@@ -24,7 +24,8 @@ def get_args():
     if args.env[:5] == 'Fetch':
         parser.add_argument('--init_offset', help='initial offset in fetch environments', type=np.float32, default=1.0)
 
-    parser.add_argument('--model_path', help='path to model meta_file directory for play or continue traning', type=str, default=None)
+    parser.add_argument('--model_path', help='path to model meta_file directory for play or continue traning', type=str,
+                        default=None)
     parser.add_argument('--model_epoch', help='epoch of model', type=str, default='latest')
     parser.add_argument('--play_mode', help='render mode', type=str, default='mujoco', choices=['mujoco', 'plot'])
 
@@ -71,11 +72,12 @@ def get_args():
                         choices=['MPCRLPolicy', 'MPCPolicy', 'RLPolicy'])
     parser.add_argument('--mpc_gen', help='Generate MPC', type=str2bool, default=False)
     parser.add_argument('--mpc_path', help='MPC solver path', type=str, default='mpc/')
+    parser.add_argument('--mpc_ratio', help='MPC step ratio incompare with RL', type=np.int32, default=4)
     parser.add_argument('--env_n_substeps', help='Steps to simulate', type=np.int32, default=20)
     parser.add_argument('--test_col_tolerance', help='Collision tolerance for test', type=np.int32, default=0)
     parser.add_argument('--test_run_id', help='Run id for test', type=np.int32, default=0)
     parser.add_argument('--test_show_collision', help='show seed of collision on test', type=str2bool, default=False)
-
+    parser.add_argument('--seed', help='Seed for test and play', type=np.int32, default=1000)
 
     # GHGG
     parser.add_argument('--stop_hgg_threshold',
@@ -91,7 +93,8 @@ def get_args():
     args.goal_based = (args.env in Robotics_envs_id)
     args.clip_return_l, args.clip_return_r = clip_return_range(args)
 
-    logger_name = args.alg + '-' + args.env + '-' + args.learn
+    logger_name = args.alg + '-' + args.env + '-' + args.learn + '-ts' + str(args.timesteps) + '-nsubsteps' + str(
+        args.env_n_substeps)
     if args.tag != '': logger_name = args.tag + '-' + logger_name
     if args.model_path:
         logger_name = args.model_path.split('/')[1]

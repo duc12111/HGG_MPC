@@ -37,10 +37,7 @@ class Player:
         env = self.env
         acc_sum, obs = 0.0, []
         err_sum = 0
-        #seed = 5995
-        #seed = 1240
-        # seed = 4014
-        seed = 3019
+        seed = args.seed
         env.np_random.seed(seed)  # TODO remove
 
         for i in range(self.test_rollouts):
@@ -126,8 +123,8 @@ class Player:
     def record_video(self, raw_path="myrecord"):
         env = self.env
         test_col_tolerance = 0
-        test_rollouts = 30
-        seed = 3000
+        test_rollouts = 10
+        seed = args.seed
         env.np_random.seed(seed)  # TODO remove
         # play policy on env
         recorder = VideoRecorder(env.env.env, base_path=raw_path)
@@ -165,4 +162,4 @@ if __name__ == "__main__":
     args = get_args()
     player = Player(args)
     player.play()
-    #player.record_video(raw_path="/Users/mavrichev/tumdev/badev/videos/rollouts_{}_{}_3000-30_3".format(args.env, args.play_policy))
+    # player.record_video(raw_path="/home/hoaquin/Desktop/HGG_MPC/videos/rollouts_{}".format(args.model_path[4:]))

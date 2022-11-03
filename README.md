@@ -39,25 +39,25 @@ python pick_dyn_sqr_obstacles.py --mpc_gen t
 (3) Train reinforcement learning policy.
 ```bash
 python train2.py --alg ddpg2 --epochs 20 --tag='HGG_mpc7_M1' --env=FetchPickDynSqrObstacle-v1 \
---reward_min -10 --goal mpc
+--reward_min -10 --goal mpc --env_n_substeps 20 --timesteps 50
 ```
 (4) (optional) Run the scenario with exHGG (RLPolicy)
 ```bash
 python play.py --env FetchPickDynSqrObstacle-v1 \
---play_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
---play_epoch 19 --goal mpc --play_policy RLPolicy --play_mode mujoco
+--model_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
+--model_epoch 19 --goal mpc --play_policy RLPolicy --play_mode mujoco
 ```
 (5) (optional) Run the scenario with MPC (MPCPolicy)
 ```bash
 python play.py --env FetchPickDynSqrObstacle-v1 \
---play_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
---play_epoch 19 --goal mpc --play_policy MPCPolicy --timesteps 240 --play_mode mujoco --env_n_substeps 5
+--model_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
+--model_epoch 19 --goal mpc --play_policy MPCPolicy --timesteps 240 --play_mode mujoco --env_n_substeps 5
 ```
 (6) Run the scenario with exHGG-MPC (MPCRLPolicy)
 ```bash
 python play.py --env FetchPickDynSqrObstacle-v1 \
---play_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
---play_epoch 19 --goal mpc --play_policy MPCRLPolicy --timesteps 240 --play_mode mujoco --env_n_substeps 5
+--model_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
+--model_epoch 19 --goal mpc --play_policy MPCRLPolicy --timesteps 240 --play_mode mujoco --env_n_substeps 5
 ```
 
 ## Other scripts
@@ -65,14 +65,14 @@ python play.py --env FetchPickDynSqrObstacle-v1 \
 Run the scenario with exHGG-MPC in plot (debug) mode (MPCRLPolicy)
 ```bash
 python play.py --env FetchPickDynSqrObstacle-v1 \
---play_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
---play_epoch 19 --goal mpc --play_policy MPCRLPolicy --timesteps 240 --play_mode plot --env_n_substeps 5
+--model_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ \
+--model_epoch 19 --goal mpc --play_policy MPCRLPolicy --timesteps 240 --play_mode plot --env_n_substeps 5
 ```
 
 Test success rate with collision tolerance (MPCRLPolicy). Results will be also saved in the log/ directory.
 ```bash
 python test_policy.py --env FetchPickDynSqrObstacle-v1 --episodes 200 \
---play_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ --play_epoch 19 --goal mpc \
+--model_path log/HGG_mpc7_M1-ddpg2-FetchPickDynSqrObstacle-v1-hgg/ --model_epoch 19 --goal mpc \
 --play_policy MPCRLPolicy --test_col_tolerance 0 --env_n_substeps 5 --timesteps 240 --test_run_id 0
 ```
 
