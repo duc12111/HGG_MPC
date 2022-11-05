@@ -69,7 +69,7 @@ class DDPG:
             self.q = self.graph.get_tensor_by_name("main/value/net/q/BiasAdd:0")
             self.q_pi = self.graph.get_tensor_by_name("main/value_1/net/q/BiasAdd:0")
             self.pi_t = self.graph.get_tensor_by_name("target/policy/net/pi/Tanh:0")
-            self.q_t = self.graph.get_tensor_by_name("target/policy/net/pi/Tanh:0")
+            self.q_t = self.graph.get_tensor_by_name("target/value/net/q/BiasAdd:0")
 
             self.pi_q_loss = self.graph.get_tensor_by_name("Neg:0")
             self.pi_l2_loss = self.graph.get_tensor_by_name("mul:0")

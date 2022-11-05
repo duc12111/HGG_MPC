@@ -59,6 +59,11 @@ class Player:
             sim_timestep = 0
             for timestep in range(args.timesteps):
                 actions, infos = self.policy.predict(obs=[ob])
+                test_ob = ob.copy()
+                test_ob['observation'] = ob['observation'].copy()
+                test_ob['observation'][1] += 0.001
+                test_ob['observation'][2] += 0.001
+
                 action = actions[0]
                 ob, _, _, env_info = env.step(action)
 

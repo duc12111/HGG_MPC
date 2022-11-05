@@ -24,6 +24,8 @@ class RLPolicy(Policy):
         self.saver.restore(self.sess, self.checkpoint_path)
         graph = tf.compat.v1.get_default_graph()
         self.raw_obs_ph = graph.get_tensor_by_name("raw_obs_ph:0")
+        self.raw_acts_ph = graph.get_tensor_by_name("acts_ph:0")
+        self.q = graph.get_tensor_by_name("main/value/net/q/BiasAdd:0")
         self.pi = graph.get_tensor_by_name("main/policy/net/pi/Tanh:0")
         print('Meta path: ', self.meta_path, self.checkpoint_path)
 
@@ -40,3 +42,9 @@ class RLPolicy(Policy):
         obs = [goal_based_process(ob) for ob in obs]
         actions = self.sess.run(self.pi, {self.raw_obs_ph: obs})
         return actions
+
+    def get_q_value(self, obs, actions):
+        assert len(obs) == len(actions)
+        obs = [goal_based_process(ob) for ob in obs]
+        q_values = self.sess.run(self.q, {self.raw_obs_ph: obs, self.raw_acts_ph: actions})
+        return q_values

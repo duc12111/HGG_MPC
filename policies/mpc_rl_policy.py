@@ -46,7 +46,8 @@ class MPCRLPolicy(Policy):
         # compute actions from obs based on current policy by running tf session initialized before
         rl_actions, rl_infos = self.rl_policy.predict(obs)
 
-        sub_goals = [env.subgoal(rl_action*env.get_action_limit()*self.ratio) for (env, rl_action) in zip(self.envs, rl_actions)]
+        sub_goals = [env.subgoal(rl_action * env.get_action_limit() * self.ratio) for (env, rl_action) in
+                     zip(self.envs, rl_actions)]
         self.mpc_policy.set_sub_goals(sub_goals)
 
         actions, infos = self.mpc_policy.predict(obs)
@@ -55,3 +56,6 @@ class MPCRLPolicy(Policy):
         for i in range(len(actions)):
             actions[i][3] = rl_actions[i][3]
         return actions, infos
+
+    def get_q_value(self, obs, actions):
+        return self.rl_policy.get_q_value(obs, actions)
