@@ -39,7 +39,7 @@ close_action = np.array([0,0,0,0.3])
 #print("vels: ", env.env.env.current_obstacle_vels)
 
 while i < 100:
-    env.np_random.seed(200)
+    # env.np_random.seed(200)
     ob = env.reset()
 
     # action = close_action  # env.action_space.sample()
@@ -48,7 +48,7 @@ while i < 100:
     print('space: ', env.action_space)
 
     print('Rollout: ', i)
-    print('Time: ', env.time)
+    print('Time: ', env.sim.get_state().time )
     #for k in range(140):
         # env.render()
         # time.sleep(0.05)

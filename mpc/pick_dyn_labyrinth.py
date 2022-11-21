@@ -4,22 +4,15 @@
 # performs one step
 # relaxing variable
 # 3D
-import sys
 
-import argparse
-import sys
 import numpy as np
-import casadi
 import forcespro
 import forcespro.nlp
 import matplotlib.pyplot as plt
-import matplotlib.patches
-from matplotlib.gridspec import GridSpec
 import casadi
-import time
-import math
 
 import sys
+
 sys.path.append("../")
 from mpc.mpc_common import extract_parameters, make_obs, get_args
 
@@ -28,10 +21,10 @@ def continuous_dynamics(x, u, p):
     # calculate dx/dt
     return casadi.vertcat(x[3],
                           x[4],
-                          x[5],
+                          0,
                           u[0],
                           u[1],
-                          u[2]
+                          0
                           )
 
 
@@ -42,8 +35,8 @@ def objective(z, p):
     acc_y_rel = u[1] / 30.0
     acc_z_rel = u[2] / 30.0
 
-    return 390 * ((x[0] - p[0]) ** 2 + (x[1] - p[1]) ** 2 + (x[2] - p[2]) ** 2) + \
-           0.01 * acc_x_rel ** 2 + 0.01 * acc_y_rel ** 2 + 0.01 * acc_z_rel ** 2 + 1000 * u[3] ** 2
+    return 10 * ((x[0] - p[0]) ** 2 + (x[1] - p[1]) ** 2) + \
+           0.01 * acc_x_rel ** 2 + 0.01 * acc_y_rel ** 2 + 700 * u[3] ** 2
 
 
 def objectiveN(z, p):
@@ -52,12 +45,14 @@ def objectiveN(z, p):
     vel_x_rel = x[3]
     vel_y_rel = x[4]
     vel_z_rel = x[5]
-    return objective(z, p) + 0.1 * vel_x_rel ** 2 + 0.1 * vel_y_rel ** 2 + 0.1 * vel_z_rel ** 2
+    return objective(z, p) + 0.1 * vel_x_rel ** 2 + 0.1 * vel_y_rel ** 2
 
-def S(a, x1, x2, x3):
-    t = x1 * casadi.exp(x1 * a) + x2 * casadi.exp(x2 * a) + x3 * casadi.exp(x3 * a)
-    b = casadi.exp(x1 * a) + casadi.exp(x2 * a) + casadi.exp(x3 * a)
+
+def S(a, x1, x2):
+    t = x1 * casadi.exp(x1 * a) + x2 * casadi.exp(x2 * a)
+    b = casadi.exp(x1 * a) + casadi.exp(x2 * a)
     return t / b
+
 
 def inequality_constraints(z, p):
     u = z[0:4]
@@ -67,46 +62,58 @@ def inequality_constraints(z, p):
     p_y = x[1]
     p_z = x[2]
 
-    x_o1 = p[6]
-    y_o1 = p[7]
-    z_o1 = p[8]
+    x_d1 = p[6]
+    y_d1 = p[7]
+    z_d1 = p[8]
 
-    x_o2 = p[12]
-    y_o2 = p[13]
-    z_o2 = p[14]
+    x_d2 = p[12]
+    y_d2 = p[13]
+    z_d2 = p[14]
 
-    x_o3 = p[18]
-    y_o3 = p[19]
-    z_o3 = p[20]
+    x_o1 = p[18]
+    y_o1 = p[19]
+    z_o1 = p[20]
 
-    grip_w_x = 0.055
+    x_o2 = p[24]
+    y_o2 = p[25]
+    z_o2 = p[26]
+
+    x_o3 = p[30]
+    y_o3 = p[31]
+    z_o3 = p[32]
+
+    grip_w_x = 0.05
     grip_w_y = 0.05
-    grip_w_z = 0.02
 
-    dx_o2 = p[15] + grip_w_x + 0.02
-    dy_o2 = p[16] + grip_w_y + 0.02
-    dz_o2 = p[17] + grip_w_z
+    dx_o1 = p[21] + grip_w_x
+    dy_o1 = p[22] + grip_w_y
+
+    dx_o2 = p[27] + grip_w_x
+    dy_o2 = p[28] + grip_w_y
+
+    dx_o3 = p[33] + grip_w_x
+    dy_o3 = p[34] + grip_w_y
+
+    xp1 = casadi.fabs(p_x - x_o1) / dx_o1
+    yp1 = casadi.fabs(p_y - y_o1) / dy_o1
+
     xp2 = casadi.fabs(p_x - x_o2) / dx_o2
     yp2 = casadi.fabs(p_y - y_o2) / dy_o2
-    zp2 = casadi.fabs(p_z - z_o2) / dz_o2
 
-    dx_o3 = p[21] + grip_w_x
-    dy_o3 = p[22] + grip_w_y
-    dz_o3 = p[23] + grip_w_z
     xp3 = casadi.fabs(p_x - x_o3) / dx_o3
     yp3 = casadi.fabs(p_y - y_o3) / dy_o3
-    zp3 = casadi.fabs(p_z - z_o3) / dz_o3
 
     return casadi.vertcat(
-        casadi.sqrt((p_x - x_o1) ** 2 + (p_y - y_o1) ** 2 + (p_z - z_o1) ** 2) + u[3],   # obstacle 1 (square)
-        S(6, xp2, yp2, zp2) + u[3],     # obstacle 2
-        S(6, xp3, yp3, zp3) + u[3],     # obstacle 3
-        #p_x + u[3],
-        #p_z + u[3]  # + relax
+        casadi.sqrt((p_x - x_d1) ** 2 + (p_y - y_d1) ** 2) + u[3],   # dynamic obstacle 1 (square)
+        casadi.sqrt((p_x - x_d2) ** 2 + (p_y - y_d2) ** 2) + u[3],   # dynamic obstacle 2 (square)
+        S(6, xp1, yp1) + u[3],  # static obstacle 1
+        S(6, xp2, yp2) + u[3],  # static obstacle 2
+        S(6, xp3, yp3) + u[3],  # static obstacle 3
+        # p_x + u[3]
     )
 
 
-def generate_pathplanner(create=True, path='', n_substep = 5):
+def generate_pathplanner(create=True, path='', n_substep=5):
     """
     Generates and returns a FORCESPRO solver that calculates a path based on
     constraints and dynamics while minimizing an objective function.
@@ -119,30 +126,29 @@ def generate_pathplanner(create=True, path='', n_substep = 5):
     model.N = 8  # horizon length
     model.nvar = 10  # number of variables
     model.neq = 6  # number of equality constraints
-    model.nh = 3
-    model.npar = 6 + 6 * 3  # number of runtime parameters
+    model.nh = 5  # number of nonlinear inequality constraints
+    model.npar = 6 + 6 * 5  # number of runtime parameters
 
     model.objective = objective
     model.objectiveN = objectiveN
-
 
     model.continuous_dynamics = continuous_dynamics
 
     model.E = np.concatenate([np.zeros((6, 4)), np.eye(6)], axis=1)
 
-    grip_w = 0 #0.045
+    grip_w = 0  # 0.045
 
     # Inequality constraints
     #                   [ ax,     ay,    az,   relax         xPos,         yPos,          zPos    xVel, yVel, zVel]
-    model.lb = np.array([-30.0, -30.0, -30.0, 0,           -0.3,    +0.4 + grip_w,   +0.41,     -1.0, -1.0, -1.0])
-    model.ub = np.array([+30.0, +30.0, +30.0, +np.inf,     +1.5,    +1.1 - grip_w,   +0.5,    +1.0, +1.0, +1.0])
+    model.lb = np.array([-30.0, -30.0, -30.0, 0, -np.inf, +0.4 + grip_w, +0.4, -1.0, -1.0, -1.0])
+    model.ub = np.array([+30.0, +30.0, +30.0, +np.inf, +np.inf, +1.1 - grip_w, +0.5, +1.0, +1.0, +1.0])
 
     # General (differentiable) nonlinear inequalities hl <= h(z,p) <= hu
     model.ineq = inequality_constraints
 
     # Upper/lower bounds for inequalities
-    model.hu = np.array([+np.inf,     +np.inf, +np.inf])
-    model.hl = np.array([0.05 + 0.06, 1,       1])
+    model.hu = np.array([+np.inf, +np.inf, +np.inf, +np.inf, +np.inf, +np.inf])
+    model.hl = np.array([0.05 + 0.05, 0.05 + 0.05, 1, 1, 1])
 
     # Initial condition on vehicle states x
     model.xinitidx = range(4, 10)  # use this to specify on which variables initial conditions
@@ -152,7 +158,7 @@ def generate_pathplanner(create=True, path='', n_substep = 5):
     # -----------------
 
     # Set solver options
-    codeoptions = forcespro.CodeOptions('FORCESNLPsolver3')
+    codeoptions = forcespro.CodeOptions('FORCESNLPsolver4')
     codeoptions.maxit = 200  # Maximum number of iterations
     codeoptions.printlevel = 0
     codeoptions.optlevel = 0  # 0 no optimization, 1 optimize for size,
@@ -161,7 +167,7 @@ def generate_pathplanner(create=True, path='', n_substep = 5):
     #                             approximation
     codeoptions.noVariableElimination = 1.
     codeoptions.overwrite = 1
-    codeoptions.nlp.integrator.Ts = 0.01 * n_substep/5
+    codeoptions.nlp.integrator.Ts = 0.01 * n_substep / 5
     codeoptions.nlp.integrator.nodes = 5
     codeoptions.nlp.integrator.type = 'ERK4'
     # codeoptions.nlp.TolEq = 1E-2
@@ -177,39 +183,40 @@ def generate_pathplanner(create=True, path='', n_substep = 5):
     if create:
         solver = model.generate_solver(options=codeoptions)
     else:
-        solver = forcespro.nlp.Solver.from_directory(path + "FORCESNLPsolver3")
+        solver = forcespro.nlp.Solver.from_directory(path + "FORCESNLPsolver4")
 
     return model, solver, codeoptions
-
 
 
 def main():
     from mpc.plot import MPCDebugPlot
     args = get_args()
-    args.env = 'FetchPickDynLiftedObstaclesEnv-v1'
+    args.env = 'FetchPickDynLabyrinthEnv-v1'
     # generate code for estimator
     model, solver, codeoptions = generate_pathplanner(create=args.mpc_gen)
 
     # Simulation
     # ----------
     # Variables for storing simulation data
-    goal = np.array([1.45, 0.43, 0.469])
+    goal = np.array([1.2, 0.56, 0.4])
     t = 0
     dt = codeoptions.nlp.integrator.Ts
     vels = np.array([0.5, 0.00001])
     shifts = np.array([0.0, 0.0])
     pos_difs = np.array([0.22, 0.13])
 
-    stat_obstacles = [[1.3, 0.60, 0.435, 0.25, 0.03, 0.03]]
-    dyn_obstacles = [[1.3, 0.10, 0.5, 0.03, 0.03, 0.03],
-                          [1.14, 0.80, 0.465, 0.12, 0.03, 0.06]]
+    stat_obstacles = [[1.3 - 0.1, 0.75, 0.43, 0.11, 0.02, 0.03],
+                      [1.3 - 0.23, 0.75, 0.43, 0.02, 0.35, 0.03],
+                      [1.3 + 0.03, 0.75, 0.43, 0.02, 0.2, 0.03]]  # env.adapt_dict["obstacles"]
+    dyn_obstacles = [[1.5, 0.60, 0.435, 0.03, 0.03, 0.03],
+                     [1.5, 0.80, 0.435, 0.03, 0.03, 0.03]]  # env.dynamic_obstacles
 
-    sim_length = 51
+    sim_length = 60
 
     # Set runtime parameters
 
     # Set initial guess to start solver from
-    xinit = np.array([1.45, 0.8, 0.44, 0, 0, 0])
+    xinit = np.array([1.2, 0.85, 0.4, 0, 0, 0])
 
     # print(obst_pos, obst_vel)
     # exit()
@@ -235,7 +242,8 @@ def main():
     sim_timestep = 0
     for k in range(sim_length):
         # Set initial condition
-        parameters = extract_parameters(goal, goal, t, dt, model.N, dyn_obstacles, vels, shifts, pos_difs, stat_obstacles)
+        parameters = extract_parameters(goal, goal, t, dt, model.N, dyn_obstacles, vels, shifts, pos_difs,
+                                        stat_obstacles)
         problem["all_parameters"] = np.reshape(parameters, (model.npar * model.N, 1))
 
         print('Solve ', k, problem["xinit"])
@@ -260,13 +268,13 @@ def main():
         pred_x = temp[4:10, :]
 
         # Apply optimized input u of first stage to system and save simulation data
-        # z = np.concatenate((pred_u[:, 0], pred_x[:, 0]))
-        # p = np.array(problem['all_parameters'][0:model.npar])
+        z = np.concatenate((pred_u[:, 0], pred_x[:, 0]))
+        p = np.array(problem['all_parameters'][0:model.npar])
         # c, jacc = solver.dynamics(z, p)
         # next_x = np.reshape(c, newshape=(4))
         next_x = pred_x[:, 1]  # take direct calculated state
 
-        # print('Cost:', model.objective(z, p))
+        print('Cost:', model.objective(z, p))
 
         # plot results of current simulation step
         obs = make_obs(parameters[0])  # simulate real obstacle positions
@@ -284,7 +292,7 @@ def main():
             print('draw')
             debug_plot.draw()
         done = True
-        #input('check')
+        # input('check')
 
     # time.sleep(2.4)
     # update_plots()

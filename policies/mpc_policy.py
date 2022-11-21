@@ -105,9 +105,6 @@ class MPCPolicy(Policy):
 
         parameters = env.extract_parameters_3d(horizon=model.N, ts=self.integrator_ts, sub_goal=mpc_goal)
 
-        #print("init: ", xinit)
-        #print("target: ", mpc_goal)
-
         problem = {'x0': x0,
                    'xinit': xinit,
                    'all_parameters': np.reshape(parameters, (model.npar * model.N, 1))}

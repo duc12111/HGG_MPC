@@ -46,7 +46,7 @@ class MPCControlGoalEnv(VanillaGoalEnv):
         if obs['collision_check']:
             new_reward = -200.
         if obs['object_dis'] > self.obj_distance_threshold:
-            new_reward = 0.0  # object is no more in the grip
+            new_reward += 0.0  # object is no more in the grip
 
         self.total_reward += new_reward
 

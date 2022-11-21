@@ -1,4 +1,6 @@
 import os
+from typing import List
+
 import gym
 from gym.envs.robotics import fetch_env
 import numpy as np
@@ -7,20 +9,18 @@ import math
 from gym.envs.robotics import rotations, robot_env, utils
 
 # Ensure we get the path separator correct on windows
-from typing import List
-
-MODEL_XML_PATH = os.path.join(os.getcwd(), 'envs', 'assets', 'fetch', 'pick_dyn_obstacles2.xml')
+MODEL_XML_PATH = os.path.join(os.getcwd(), 'envs', 'assets', 'fetch', 'test_env.xml')
 
 
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
-
-class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
+# same as FetchPickDynObstaclesRstopEnv only change speed
+class FetchPickDynObstaclesRstop2Env(robot_env.RobotEnv, gym.utils.EzPickle):
     def __init__(self, reward_type='sparse', n_substeps=20):
 
-        """Initializes a new Fetch environment. Using sin function movement
+        """Initializes a new Fetch environment. with random stop
 
         Args:
             model_path (string): path to the environments XML file
@@ -47,7 +47,7 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         model_path = MODEL_XML_PATH
         self.further = False
         self.gripper_extra_height = 0.0
-        self.block_gripper = False
+        self.block_gripper = True
         self.has_object = True
         self.block_object_in_gripper = True
         self.block_z = True
@@ -59,19 +59,18 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.target_range_y = 0.02  # entire table: 0.175
         self.distance_threshold = 0.05
         self.reward_type = reward_type
-        self.limit_action = 0.05  # limit maximum change in position
+        self.limit_action = n_substeps/400 # limit maximum change in position
         self.enable_limit_action = True
-        self.field = [1.3, 0.75, 0.6, 0.25, 0.35, 0.2]
-        self.dyn_obstacles_geom_names = ['obstacle:geom', 'obstacle2:geom']
-        self.stat_obstacles_geom_names = []
-        self.stat_obstacles = []
-        self.dyn_obstacles = [[1.3, 0.60, 0.435, 0.03, 0.03, 0.03], [1.3, 0.80, 0.435, 0.12, 0.03, 0.03]]
 
-        self.obstacles = self.dyn_obstacles + self.stat_obstacles
-        self.obstacles_geom_names = self.dyn_obstacles_geom_names + self.stat_obstacles_geom_names
+        self.field = [1.3, 0.75, 0.6, 0.25, 0.35, 0.2]
+        self.dyn_obstacles = [[1.3, 0.60, 0.435, 0.03, 0.03, 0.03], [1.3, 0.80, 0.435, 0.03, 0.03, 0.03]]
+
+        self.obstacles = self.dyn_obstacles
         self.block_max_z = 0.53
 
-        super(FetchPickDynObstaclesSinEnv, self).__init__(
+        self.start_time = 0
+
+        super(FetchPickDynObstaclesRstop2Env, self).__init__(
             model_path=model_path, n_substeps=n_substeps, n_actions=4,
             initial_qpos=initial_qpos)
 
@@ -81,11 +80,9 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
     def _setup_dyn_obstacles(self):
 
         # setup velocity limits
-        self.vel_lims = np.array([0.6, 0.9])
-        self.vel_lims2 = np.array([0.2, 0.6])
-        self.n_moving_obstacles = len(self.dyn_obstacles)
-        self.n_obstacles = len(self.dyn_obstacles) + len(self.stat_obstacles)
-        self.vel_lims = np.array([0.6, 0.9])
+        self.vel_lims = np.array([1.6, 2.6])
+        self.n_moving_obstacles = len(self.obstacles)
+        self.n_obstacles = len(self.dyn_obstacles)
         self.current_obstacle_vels = []
 
         self._setup_dyn_limits()
@@ -94,9 +91,8 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.obstacle_slider_idxs.append(self.sim.model.joint_names.index('obstacle:joint'))
         self.obstacle_slider_idxs.append(self.sim.model.joint_names.index('obstacle2:joint'))
         self.geom_id_object = self.sim.model.geom_name2id('object0')
-
         self.geom_ids_obstacles = []
-        for name in self.obstacles_geom_names:
+        for name in ['obstacle:geom', 'obstacle2:geom']:
             self.geom_ids_obstacles.append(self.sim.model.geom_name2id(name))
 
     def _setup_dyn_limits(self):
@@ -142,15 +138,19 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             s_q = max_q * 4
             v = self.current_obstacle_vels[i]
             a = max_q  # amplitude
-            p = s_q / v  # period
-            s = self.current_obstacle_shifts[i] * 2 * math.pi  # time shift
-            new_pos_x = a * math.sin(s + 2 * math.pi / p * t)  # triangle wave
+            p = abs(s_q / v)  # period
+            p_paused = p + self.current_paused_time[i]
+            a_paused = a * p_paused / p
+            s = self.current_obstacle_shifts[i] * math.pi / 2 - 2 * math.pi / p_paused  # time shift
+            new_pos_x = 2 * a_paused / math.pi * math.asin(math.sin(s + 2 * math.pi / p_paused * t))  # triangle wave
+
+            new_pos_x = max(new_pos_x, -a) if new_pos_x < 0 else min(new_pos_x, a)
             new_positions[i] = new_pos_x
 
         return new_positions
 
     def get_obstacles(self, time) -> List[List[float]]:
-        t = time
+        t = time - self.start_time
         n = self.n_moving_obstacles
         new_positions_x = self._compute_obstacle_rel_x_positions(time=t)
         updated_dyn_obstacles = []
@@ -160,7 +160,20 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             obstacle[0] = obstacle[0] + new_positions_x[i]
             updated_dyn_obstacles.append(obstacle)
 
-        return updated_dyn_obstacles + self.stat_obstacles
+        return updated_dyn_obstacles
+
+    def compute_obstacle_positions(self, time) -> np.ndarray:
+        t = time
+        n = self.n_moving_obstacles
+        new_positions_x = self.compute_obstacle_rel_x_positions(time=t)
+        new_positions = np.zeros(n * 2)
+        obst = self.obstacles
+
+        for i in range(n):
+            new_positions[2 * i] = obst[i][0] + new_positions_x[i]
+            new_positions[2 * i + 1] = obst[i][1]
+
+        return new_positions
 
     def _move_obstacles(self, t):
         old_positions_x = self._compute_obstacle_rel_x_positions(time=t - self.dt)
@@ -172,7 +185,7 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
     def step(self, action):
         t = self.sim.get_state().time + self.dt
         self._move_obstacles(t)
-        return super(FetchPickDynObstaclesSinEnv, self).step(action)
+        return super(FetchPickDynObstaclesRstop2Env, self).step(action)
 
     # GoalEnv methods
     # ----------------------------
@@ -210,7 +223,6 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         if self.block_z:
             pos_ctrl[2] = 0.
         action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
-
         # Apply action to simulation.
         utils.ctrl_set_action(self.sim, action)
         utils.mocap_set_action(self.sim, action)
@@ -243,15 +255,11 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
 
         body_id = self.sim.model.body_name2id('obstacle')
         pos1 = np.array(self.sim.data.body_xpos[body_id].copy())
-        dims1 = self.dyn_obstacles[0][3:6]
-        ob1 = np.concatenate((pos1, dims1.copy()))
-
-        body_id = self.sim.model.body_name2id('obstacle2')
-        pos2 = np.array(self.sim.data.body_xpos[body_id].copy())
-        dims2 = self.dyn_obstacles[1][3:6]
-        ob2 = np.concatenate((pos2, dims2.copy()))
-
-        dyn_obstacles = np.array([ob1, ob2])
+        body_id2 = self.sim.model.body_name2id('obstacle2')
+        pos2 = np.array(self.sim.data.body_xpos[body_id2].copy())
+        dims = self.obstacles[0][3:6]
+        ob1 = np.concatenate((pos1, dims.copy()))
+        ob2 = np.concatenate((pos2, dims.copy()))
 
         obs = np.concatenate([
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
@@ -264,7 +272,7 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
             'desired_goal': self.goal.copy(),
-            'real_obstacle_info': dyn_obstacles,
+            'real_obstacle_info': np.array([ob1, ob2]),
             'object_dis': obj_dist
         }
 
@@ -277,7 +285,7 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.viewer.cam.distance = 2.5
         self.viewer.cam.azimuth = 130.
         self.viewer.cam.elevation = -24.
-        self.viewer._run_speed = 1.0
+        self.viewer._run_speed = 0.1
 
     def _render_callback(self):
         # Visualize target.
@@ -289,7 +297,7 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
     def _reset_sim(self):
         self.sim.set_state(self.initial_state)
 
-        # Randomize start position of object.
+        # # Randomize start position of object if need.
         if self.has_object:
             object_xpos = self.initial_gripper_xpos[:2]
             if not self.block_object_in_gripper:
@@ -306,17 +314,10 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             self.sim.data.set_joint_qpos('robot0:r_gripper_finger_joint', 0.01)
 
         # randomize obstacles
-        n_obst = len(self.obstacles)
-        n_dyn = self.n_moving_obstacles
-        directions = self.np_random.choice([-1, 1], size=n_dyn)
-        self.current_obstacle_shifts = self.np_random.uniform(-1.0, 1.0, size=n_obst)
-
-        self.current_obstacle_vels = directions * self.np_random.uniform(self.vel_lims[0], self.vel_lims[1], size=n_dyn)
-
-        # lower velocity for rectangle obstacle
-        self.current_obstacle_vels[1] = directions[1] * self.np_random.uniform(self.vel_lims2[0], self.vel_lims2[1],
-                                                                               size=1)
-
+        directions = self.np_random.choice([-1, 1], size=2)
+        self.current_obstacle_shifts = directions
+        self.current_obstacle_vels = directions * self.np_random.uniform(self.vel_lims[0], self.vel_lims[1], size=2)
+        self.current_paused_time = self.np_random.uniform(0.5, 1., size=2)
         self._move_obstacles(t=self.sim.get_state().time)  # move obstacles to the initial positions
 
         self.sim.forward()
@@ -391,13 +392,10 @@ class FetchPickDynObstaclesSinEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.sim.model.site_pos[site_id] = self.target_center + [-self.target_range_x, -self.target_range_y,
                                                                  0.0] - sites_offset
 
-        site_id = self.sim.model.site_name2id('mark5')
-        self.sim.model.site_pos[site_id] = object_xpos - sites_offset
-
         self.sim.forward()
 
         if self.has_object:
             self.height_offset = self.sim.data.get_site_xpos('object0')[2]
 
     def render(self, mode='human', width=1080, height=1080):
-        return super(FetchPickDynObstaclesSinEnv, self).render(mode, width, height)
+        return super(FetchPickDynObstaclesRstop2Env, self).render(mode, width, height)

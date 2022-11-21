@@ -50,7 +50,7 @@ class FetchPickDynLiftedObstaclesEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.block_gripper = False
         self.has_object = True
         self.block_object_in_gripper = True
-        self.block_z = True
+        self.block_z = False
         self.target_in_the_air = False
         self.target_offset = 0.0
         self.obj_range = 0.06  # originally 0.15
@@ -59,7 +59,7 @@ class FetchPickDynLiftedObstaclesEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.target_range_y = 0.02  # entire table: 0.175
         self.distance_threshold = 0.05
         self.reward_type = reward_type
-        self.limit_action = 0.05    # limit maximum change in position
+        self.limit_action = n_substeps/400    # limit maximum change in position
         self.block_max_z = 0.53 - 0.02 - 0.02
 
         self.field = [1.3, 0.75, 0.6, 0.25, 0.35, 0.2]
@@ -202,8 +202,8 @@ class FetchPickDynLiftedObstaclesEnv(robot_env.RobotEnv, gym.utils.EzPickle):
 
         if self.block_gripper:
             gripper_ctrl = -0.8
-
-        pos_ctrl *= self.limit_action  # limit maximum change in position
+        if self.enable_limit_action:
+            pos_ctrl *= self.limit_action  # limit maximum change in position
         rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
         gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
         assert gripper_ctrl.shape == (2,)
@@ -284,7 +284,7 @@ class FetchPickDynLiftedObstaclesEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.viewer.cam.distance = 2.5
         self.viewer.cam.azimuth = 130.
         self.viewer.cam.elevation = -24.
-        self.viewer._run_speed = 0.02
+        self.viewer._run_speed = 0.2
 
     def _render_callback(self):
         # Visualize target.

@@ -3,7 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches
 from matplotlib.gridspec import GridSpec
-import seaborn as sns; sns.set()
+import seaborn as sns;
+
+sns.set()
+
 
 def rectangle(bbox, ax=None, *args, **kwargs):
     """Draw an ellipse filling the given bounding box."""
@@ -14,6 +17,7 @@ def rectangle(bbox, ax=None, *args, **kwargs):
     ax.add_artist(shape)
     return ax
 
+
 def ellipse(bbox, ax=None, *args, **kwargs):
     """Draw an ellipse filling the given bounding box."""
     if ax == None:
@@ -23,8 +27,8 @@ def ellipse(bbox, ax=None, *args, **kwargs):
     ax.add_artist(shape)
     return ax
 
-class MPCDebugPlot:
 
+class MPCDebugPlot:
     grip_w_x = None
     grip_w_y = None
     grip_w_z = None
@@ -37,8 +41,11 @@ class MPCDebugPlot:
         'FetchPickDynObstaclesEnv-v2': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
         'FetchPickDynObstaclesRstopEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
         'FetchPickDynObstaclesSinEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
-        'FetchPickDynLiftedObstaclesEnv-v1': [[0.05, 0.055 + 0.02, 0.055], [0.05, 0.05 + 0.02, 0.05], [0.05, 0.02, 0.02]],
+        'FetchPickDynLiftedObstaclesEnv-v1': [[0.05, 0.055 + 0.02, 0.055], [0.05, 0.05 + 0.02, 0.05],
+                                              [0.05, 0.02, 0.02]],
         'FetchPickDynObstaclesMaxEnv-v1': [[0.05, 0.03], [0.05, 0.048], [0.05, 0.05]],
+        'FetchPickDynLabyrinthEnv-v1': [[0.02, 0.02, 0.02, 0.02, 0.02], [0.02, 0.02, 0.02, 0.02, 0.02],
+                                        [0.02, 0.02, 0.02, 0.02, 0.02]]
     }
 
     obstacle_colors = {
@@ -49,6 +56,8 @@ class MPCDebugPlot:
         'FetchPickDynObstaclesSinEnv-v1': ['#416ab6', '#5aa9a2'],
         'FetchPickDynLiftedObstaclesEnv-v1': ['#416ab6', '#416ab6', '#5aa9a2'],
         'FetchPickDynObstaclesMaxEnv-v1': ['#416ab6', '#5aa9a2'],
+        'FetchPickDynLabyrinthEnv-v1': ['#416ab6', '#416ab6', '#416ab6', '#5aa9a2', '#5aa9a2'],
+
     }
 
     def __init__(self, args, sim_length: int, model):
@@ -63,7 +72,7 @@ class MPCDebugPlot:
         self.grip_w_x = list(reversed(self.safe_areas[env][0]))
         self.grip_w_y = list(reversed(self.safe_areas[env][1]))
         self.grip_w_z = list(reversed(self.safe_areas[env][2]))
-        self.obstacle_color = list(reversed(self.obstacle_colors[env]))     # reverse for z-index of the layers
+        self.obstacle_color = list(reversed(self.obstacle_colors[env]))  # reverse for z-index of the layers
 
     def show(self):
         plt.show()
@@ -91,8 +100,8 @@ class MPCDebugPlot:
         # Plot trajectory
         ax_pos = fig.add_subplot(gs[:, 0])
         # l0, = ax_pos.plot(np.transpose(path_points[0, :]), np.transpose(path_points[1, :]), 'rx')
-        l11, = plt.plot(parameters[0][3], parameters[0][4], 'bo') # main goal
-        l1, = plt.plot(parameters[0][0], parameters[0][1], 'kx') # subgoal
+        l11, = plt.plot(parameters[0][3], parameters[0][4], 'bo')  # main goal
+        l1, = plt.plot(parameters[0][0], parameters[0][1], 'kx')  # subgoal
         plt.title('Position', fontsize=16)
         # plt.axis('equal')
         plt.xlim([1.05, 1.55])
@@ -226,13 +235,13 @@ class MPCDebugPlot:
         plt.grid("both")
         plt.title('Relaxation', fontsize=16)
         plt.xlim([0., sim_length - 1])
-        #plt.plot([0, sim_length - 1], np.transpose([model.ub[3], model.ub[3]]), 'r:')
-        #plt.plot([0, sim_length - 1], np.transpose([model.lb[3], model.lb[3]]), 'r:')
+        # plt.plot([0, sim_length - 1], np.transpose([model.ub[3], model.ub[3]]), 'r:')
+        # plt.plot([0, sim_length - 1], np.transpose([model.lb[3], model.lb[3]]), 'r:')
         ax_Rel.step(range(0, k + 1), u[3, 0:k + 1], 'b-')
         ax_Rel.step(range(k, k + model.N), pred_u[3, :], 'g-')
 
         # Plot trajectory
-        ax_posZ = fig.add_subplot(5, 3, (12,15))
+        ax_posZ = fig.add_subplot(5, 3, (12, 15))
         plt.plot(parameters[0][1], parameters[0][2], 'kx')  # subgoal
         plt.title('Position', fontsize=16)
         # plt.axis('equal')
@@ -317,7 +326,7 @@ class MPCDebugPlot:
         for p in parameters:
             obstacles.append([p[6], p[7]])
             obstacles.append([p[12], p[13]])
-            #obstacles.append([p[18] + 10, p[19] + 10])
+            # obstacles.append([p[18] + 10, p[19] + 10])
 
         # print(obstacles)
         # print(parameters, len(obstacles), len(ellipses))
@@ -335,7 +344,7 @@ class MPCDebugPlot:
         ax_list[0].get_lines().pop(-1).remove()  # remove old init position
         ax_list[0].get_lines().pop(-1).remove()  # remove old prediction of trajectory
         ax_list[0].get_lines().pop(-1).remove()  # remove old trajectory
-        #ax_list[0].get_lines().pop(-1).remove()  # remove old subgoal
+        # ax_list[0].get_lines().pop(-1).remove()  # remove old subgoal
 
         ax_list[1].get_lines().pop(-1).remove()  # remove old prediction ax
         ax_list[1].get_lines().pop(-1).remove()  # remove old ax
@@ -359,7 +368,7 @@ class MPCDebugPlot:
         # Update plot with current simulation data
         ax_list[0].plot(params[0], params[1], 'kx')  # plot new subgoal position
 
-        ax_list[0].plot(x[0, 0:k+2], x[1, 0:k+2], '-b')  # plot new trajectory
+        ax_list[0].plot(x[0, 0:k + 2], x[1, 0:k + 2], '-b')  # plot new trajectory
         ax_list[0].plot(pred_x[0, 1:], pred_x[1, 1:], 'g-')  # plot new prediction of trajectory
 
         ax_list[0].plot(pred_x[0, 0], pred_x[1, 0], 'mx')  # plot new init position
@@ -367,10 +376,10 @@ class MPCDebugPlot:
         ax_list[0].plot(robot_pos[0], robot_pos[1], 'b+')  # plot new next actual position
         ax_list[0].plot(target_x[0], target_x[1], 'r+')  # plot new target
 
-        ax_list[1].step(range(0, k+1), u[0, 0:k+1], 'b-')  # plot new dx
+        ax_list[1].step(range(0, k + 1), u[0, 0:k + 1], 'b-')  # plot new dx
         ax_list[1].step(range(k, k + model.N), pred_u[0, :], 'g-')  # plot new prediction of ax
 
-        ax_list[2].step(range(0, k+1), u[1, 0:k+1], 'b-')  # plot new dy
+        ax_list[2].step(range(0, k + 1), u[1, 0:k + 1], 'b-')  # plot new dy
         ax_list[2].step(range(k, k + model.N), pred_u[1, :], 'g-')  # plot new prediction of ay
 
         ax_list[3].step(range(0, k + 1), u[2, 0:k + 1], 'b-')  # plot new dz
@@ -396,4 +405,3 @@ class MPCDebugPlot:
         ax_list[9].plot(pred_x[1, 1:], pred_x[2, 1:], 'g-')  # plot new prediction of trajectory
 
         plt.pause(0.25)
-

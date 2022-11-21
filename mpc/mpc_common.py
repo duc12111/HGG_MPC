@@ -28,11 +28,11 @@ def _compute_obstacle_rel_x_positions(t, i, pos_difs, vels, shifts):
     return new_pos_x
 
 
-def extract_parameters(subgoal, goal, t, dt, N, obstacles, vels, shifts, pos_difs, stat_obstacles):
+def extract_parameters(subgoal, goal, t, dt, N, dyn_obstacles, vels, shifts, pos_difs, stat_obstacles):
     goals = np.append(subgoal, goal)
     stat_obstacles_np = np.array(stat_obstacles).ravel()
     return np.array([np.concatenate([goals,
-                                     move_obstacles(t + dt * n, obstacles, vels, pos_difs, shifts).ravel(),
+                                     move_obstacles(t + dt * n, dyn_obstacles, vels, pos_difs, shifts).ravel(),
                                      stat_obstacles_np]) for n in range(N)])
 
 

@@ -7,7 +7,9 @@ from .fetch.pick_dyn_obstacles2 import FetchPickDynObstaclesEnv2
 from .fetch.pick_dyn_obstacles_max import FetchPickDynObstaclesMaxEnv
 from .fetch.pick_dyn_lifted_obstacles import FetchPickDynLiftedObstaclesEnv
 from .fetch.pick_dyn_obstacles2_rstop import FetchPickDynObstaclesRstopEnv
+from .fetch.pick_dyn_obstacles2_rstop_fast import FetchPickDynObstaclesRstop2Env
 from .fetch.pick_dyn_obstackles2_sin import FetchPickDynObstaclesSinEnv
+from .fetch.pick_safe_risky_lane import FetchPickSafeRiskyLaneEnv
 
 def register_custom_envs():
     gym.envs.register(
@@ -59,8 +61,21 @@ def register_custom_envs():
         kwargs={'reward_type': 'sparse', 'n_substeps': 20},
     )
     gym.envs.register(
+        id='FetchPickDynObstaclesRstopEnv-v2',
+        entry_point='envs:FetchPickDynObstaclesRstop2Env',
+        max_episode_steps=100,
+        kwargs={'reward_type': 'sparse', 'n_substeps': 20},
+    )
+    gym.envs.register(
         id='FetchPickDynObstaclesSinEnv-v1',
         entry_point='envs:FetchPickDynObstaclesSinEnv',
+        max_episode_steps=100,
+        kwargs={'reward_type': 'sparse', 'n_substeps': 20},
+    )
+
+    gym.envs.register(
+        id='FetchPickSafeRiskyLaneEnv-v1',
+        entry_point='envs:FetchPickSafeRiskyLaneEnv',
         max_episode_steps=100,
         kwargs={'reward_type': 'sparse', 'n_substeps': 20},
     )

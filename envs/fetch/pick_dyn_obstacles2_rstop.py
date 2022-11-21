@@ -316,7 +316,7 @@ class FetchPickDynObstaclesRstopEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         # randomize obstacles
         directions = self.np_random.choice([-1, 1], size=2)
         self.current_obstacle_shifts = directions
-        self.current_obstacle_vels = directions * self.np_random.uniform(1.0, 1.0, size=2)
+        self.current_obstacle_vels = directions * self.np_random.uniform(self.vel_lims[0], self.vel_lims[1], size=2)
         self.current_paused_time = self.np_random.uniform(0.75, 0.75, size=2)
         self._move_obstacles(t=self.sim.get_state().time)  # move obstacles to the initial positions
 

@@ -11,7 +11,10 @@ Robotics_envs_id = [
     'FetchPickDynObstaclesMaxEnv-v1',
     'TestEnv-v1',
     'FetchPickDynObstaclesRstopEnv-v1',
+    'FetchPickDynObstaclesRstopEnv-v2',
     'FetchPickDynObstaclesSinEnv-v1',
+    'FetchPickDynLabyrinthEnv-v1',
+    'FetchPickSafeRiskyLaneEnv-v1',
 ]
 
 
@@ -35,6 +38,9 @@ def clip_return_range(args):
         'FetchPickDynObstaclesMaxEnv-v1': (gamma_sum_min, gamma_sum_max),
         'TestEnv-v1': (gamma_sum_min, gamma_sum_max),
         'FetchPickDynObstaclesRstopEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'FetchPickDynObstaclesRstopEnv-v2': (gamma_sum_min, gamma_sum_max),
         'FetchPickDynObstaclesSinEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'FetchPickDynLabyrinthEnv-v1': (gamma_sum_min, gamma_sum_max),
+        'FetchPickSafeRiskyLaneEnv-v1': (gamma_sum_min, gamma_sum_max),
 
     }[args.env]

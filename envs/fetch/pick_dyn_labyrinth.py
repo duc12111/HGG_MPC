@@ -1,4 +1,6 @@
 import os
+from typing import List
+
 import gym
 from gym.envs.robotics import fetch_env
 import numpy as np
@@ -9,12 +11,14 @@ import copy
 # Ensure we get the path separator correct on windows
 MODEL_XML_PATH = os.path.join(os.getcwd(), 'envs', 'assets', 'fetch', 'pick_dyn_labyrinth.xml')
 
+
 def goal_distance(goal_a, goal_b):
     assert goal_a.shape == goal_b.shape
     return np.linalg.norm(goal_a - goal_b, axis=-1)
 
+
 class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
-    def __init__(self, reward_type='sparse'):
+    def __init__(self, reward_type='sparse', n_substeps=20):
 
         """Initializes a new Fetch environment.
 
@@ -39,28 +43,29 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             'object0:joint': [1.25, 0.53, 0.4, 1., 0., 0., 0.],
         }
         model_path = MODEL_XML_PATH
-        n_substeps = 20
-        self.further= False
+        self.further = False
         self.gripper_extra_height = 0.0
         self.block_gripper = True
         self.has_object = True
         self.block_object_in_gripper = True
         self.block_z = True
+        self.block_max_z = 0.53
         self.target_in_the_air = False
         self.target_offset = 0.0
-        self.obj_range = 0.06 # originally 0.15
+        self.obj_range = 0.06  # originally 0.15
         self.target_range = 0.06
-        self.target_range_x = 0.06 # entire table: 0.125
-        self.target_range_y = 0.06 # entire table: 0.175
+        self.target_range_x = 0.06  # entire table: 0.125
+        self.target_range_y = 0.06  # entire table: 0.175
         self.distance_threshold = 0.05
         self.reward_type = reward_type
-        self.limit_action = 0.05  # limit maximum change in position
+        self.limit_action = n_substeps / 400  # limit maximum change in position
+        self.enable_limit_action = True
 
-        self.adapt_dict=dict()
+        self.adapt_dict = dict()
         self.adapt_dict["field"] = [1.35, 0.75, 0.43, 0.3, 0.35, 0.03]
-        self.adapt_dict["obstacles"] = [[1.3 - 0.1, 0.75, 0.43, 0.11, 0.02, 0.03],
-                                    [1.3 - 0.23, 0.75, 0.43, 0.02, 0.35, 0.03],
-                                    [1.3 + 0.03, 0.75, 0.43, 0.02, 0.2, 0.03]]
+        self.adapt_dict["obstacles"] = self.stat_obstacles = [[1.3 - 0.1, 0.75, 0.43, 0.11, 0.02, 0.03],
+                                                              [1.3 - 0.23, 0.75, 0.43, 0.02, 0.35, 0.03],
+                                                              [1.3 + 0.03, 0.75, 0.43, 0.02, 0.2, 0.03]]
         self.dyn_obstacles = [[1.5, 0.60, 0.435, 0.03, 0.03, 0.03], [1.5, 0.80, 0.435, 0.03, 0.03, 0.03]]
 
         super(FetchPickDynLabyrinthEnv, self).__init__(
@@ -74,6 +79,8 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         # setup velocity limits
         self.vel_lims = np.array([0.2, 0.4])
         self.n_moving_obstacles = len(self.dyn_obstacles)
+        self.n_obstacles = len(self.dyn_obstacles) + len(self.stat_obstacles)
+
         self.current_obstacle_vels = []
 
         self._setup_dyn_limits()
@@ -115,7 +122,7 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.sim.set_state(to_mod)
         self.sim.forward()
 
-    def compute_obstacle_rel_x_positions(self, time) -> np.ndarray:
+    def _compute_obstacle_rel_x_positions(self, time) -> np.ndarray:
         n = self.n_moving_obstacles
         new_positions = np.zeros(n)
         t = time
@@ -132,10 +139,10 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
 
         return new_positions
 
-    def compute_obstacle_positions(self, time) -> np.ndarray:
+    def _compute_obstacle_positions(self, time) -> np.ndarray:
         t = time
         n = self.n_moving_obstacles
-        new_positions_x = self.compute_obstacle_rel_x_positions(time=t)
+        new_positions_x = self._compute_obstacle_rel_x_positions(time=t)
         new_positions = np.zeros(n * 2)
         obst = self.dyn_obstacles
 
@@ -145,22 +152,35 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
 
         return new_positions
 
+    def get_obstacles(self, time) -> List[List[float]]:
+        t = time
+        n = self.n_moving_obstacles
+        new_positions_x = self._compute_obstacle_rel_x_positions(time=t)
+        updated_dyn_obstacles = []
+
+        for i in range(self.n_moving_obstacles):
+            obstacle = self.dyn_obstacles[i].copy()
+            obstacle[0] = obstacle[0] + new_positions_x[i]
+            updated_dyn_obstacles.append(obstacle)
+
+        return updated_dyn_obstacles + self.stat_obstacles
 
     def move_obstacles(self):
         t = self.sim.get_state().time + self.dt
-        new_positions_x = self.compute_obstacle_rel_x_positions(time=t)
+        new_positions_x = self._compute_obstacle_rel_x_positions(time=t)
         self.set_obstacle_slide_pos(new_positions_x)
 
     # GoalEnv methods
     # ----------------------------
 
-    def compute_reward(self, achieved_goal, goal, info): # leave unchanged
+    def compute_reward(self, achieved_goal, goal, info):  # leave unchanged
         # Compute distance between goal and the achieved goal.
         d = goal_distance(achieved_goal, goal)
         if self.reward_type == 'sparse':
             return -(d > self.distance_threshold).astype(np.float32)
         else:
             return -d
+
     """    
     def is_inside_goal_space(self, goal):
         assert goal.shape == (3,)
@@ -168,6 +188,7 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
             (self.target_center[1] - self.target_range_y <= goal[1] <= self.target_center[1] + self.target_range_y) and
             (self.target_center[2] )
     """
+
     # RobotEnv methods
     # ----------------------------
 
@@ -192,7 +213,8 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         action = action.copy()  # ensure that we don't change the action outside of this scope
         pos_ctrl, gripper_ctrl = action[:3], action[3]
 
-        pos_ctrl *= self.limit_action  # limit maximum change in position
+        if self.enable_limit_action:
+            pos_ctrl *= self.limit_action  # limit maximum change in position
         rot_ctrl = [1., 0., 1., 0.]  # fixed rotation of the end effector, expressed as a quaternion
         gripper_ctrl = np.array([gripper_ctrl, gripper_ctrl])
         assert gripper_ctrl.shape == (2,)
@@ -240,21 +262,25 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         ob1 = np.concatenate((pos1, dims.copy()))
         ob2 = np.concatenate((pos2, dims.copy()))
 
+        dyn_obstacles = np.array([ob1, ob2])
+
         obs = np.concatenate([
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
             object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel, ob1, ob2
         ])
 
-        obj_dist = np.linalg.norm(object_rel_pos.ravel()[:2]) # only xy
+        obj_dist = np.linalg.norm(object_rel_pos.ravel()[:2])  # only xy
+
+        stat_obstacles = np.array(self.stat_obstacles)
 
         return {
             'observation': obs.copy(),
             'achieved_goal': achieved_goal.copy(),
             'desired_goal': self.goal.copy(),
-            'real_obstacle_info': np.array([ob1, ob2]),
+            'real_obstacle_info': np.concatenate([dyn_obstacles, stat_obstacles]),
             'object_dis': obj_dist,
-            #'object_pos': object_pos,
-            #'grip_pos': grip_pos
+            # 'object_pos': object_pos,
+            # 'grip_pos': grip_pos
         }
 
     def _viewer_setup(self):
@@ -265,7 +291,7 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         self.viewer.cam.distance = 2.5
         self.viewer.cam.azimuth = 130.
         self.viewer.cam.elevation = -24.
-        self.viewer._run_speed = 0.3
+        self.viewer._run_speed = 0.2
 
     def _render_callback(self):
         # Visualize target.
@@ -334,7 +360,7 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         sites_offset = (self.sim.data.site_xpos - self.sim.model.site_pos).copy()[3]
 
         # Move end effector into position.
-        gripper_target = self.init_center + self.gripper_extra_height #+ self.sim.data.get_site_xpos('robot0:grip')
+        gripper_target = self.init_center + self.gripper_extra_height  # + self.sim.data.get_site_xpos('robot0:grip')
         gripper_rotation = np.array([1., 0., 1., 0.])
         self.sim.data.set_mocap_pos('robot0:mocap', gripper_target)
         self.sim.data.set_mocap_quat('robot0:mocap', gripper_rotation)
@@ -344,7 +370,7 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         # Extract information for sampling goals.
         self.initial_gripper_xpos = self.sim.data.get_site_xpos('robot0:grip').copy()
         object_xpos = self.initial_gripper_xpos
-        object_xpos[2] = 0.4 # table height
+        object_xpos[2] = 0.4  # table height
 
         if self.block_object_in_gripper:
             # place object in the gripper
@@ -362,16 +388,18 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
         site_id = self.sim.model.site_name2id('init_4')
         self.sim.model.site_pos[site_id] = object_xpos + [-self.obj_range, -self.obj_range, 0.0] - sites_offset
 
-
         site_id = self.sim.model.site_name2id('mark1')
-        self.sim.model.site_pos[site_id] = self.target_center + [self.target_range_x, self.target_range_y, 0.0] - sites_offset
+        self.sim.model.site_pos[site_id] = self.target_center + [self.target_range_x, self.target_range_y,
+                                                                 0.0] - sites_offset
         site_id = self.sim.model.site_name2id('mark2')
-        self.sim.model.site_pos[site_id] = self.target_center + [-self.target_range_x, self.target_range_y, 0.0] - sites_offset
+        self.sim.model.site_pos[site_id] = self.target_center + [-self.target_range_x, self.target_range_y,
+                                                                 0.0] - sites_offset
         site_id = self.sim.model.site_name2id('mark3')
-        self.sim.model.site_pos[site_id] = self.target_center + [self.target_range_x, -self.target_range_y, 0.0] - sites_offset
+        self.sim.model.site_pos[site_id] = self.target_center + [self.target_range_x, -self.target_range_y,
+                                                                 0.0] - sites_offset
         site_id = self.sim.model.site_name2id('mark4')
-        self.sim.model.site_pos[site_id] = self.target_center + [-self.target_range_x, -self.target_range_y, 0.0] - sites_offset
-
+        self.sim.model.site_pos[site_id] = self.target_center + [-self.target_range_x, -self.target_range_y,
+                                                                 0.0] - sites_offset
 
         self.sim.step()
 
@@ -380,5 +408,3 @@ class FetchPickDynLabyrinthEnv(robot_env.RobotEnv, gym.utils.EzPickle):
 
     def render(self, mode='human', width=1080, height=1080):
         return super(FetchPickDynLabyrinthEnv, self).render(mode, width, height)
-
-
